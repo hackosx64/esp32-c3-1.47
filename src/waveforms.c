@@ -2,7 +2,7 @@
 
 #include <assert.h>
 
-#define TABLE_LENGTH 128
+#define TABLE_LENGTH WAVEFORM_MAX_SAMPLES
 
 #include "waveform_tables.inc"
 

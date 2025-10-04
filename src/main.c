@@ -33,7 +33,10 @@
 #define LEDC_MODE LEDC_LOW_SPEED_MODE
 #define LEDC_CHANNEL LEDC_CHANNEL_0
 #define LEDC_RESOLUTION LEDC_TIMER_13_BIT
-#define LEDC_BASE_FREQ 200000
+#define LEDC_BASE_FREQ 5000
+
+#define TIMER_MIN_PERIOD_US 10
+#define MAX_SAMPLE_RATE_HZ (1000000.0f / (float)TIMER_MIN_PERIOD_US)
 
 #define BLINK_INTERVAL_US 400000
 #define UI_REFRESH_INTERVAL_MS 50
@@ -133,6 +136,8 @@ static void apply_waveform(const waveform_definition_t *waveform)
     s_waveform_length = waveform->length;
     s_waveform_index = 0;
 
+    s_frequency_hz = clamp_frequency(s_frequency_hz);
+
     if (!waveform->samples || waveform->length <= 1 || s_frequency_hz <= 0.0f) {
         esp_err_t err = esp_timer_stop(s_wave_timer);
         if (err != ESP_ERR_INVALID_STATE) {
@@ -148,12 +153,12 @@ static void apply_waveform(const waveform_definition_t *waveform)
     if (sample_rate < 1.0f) {
         sample_rate = 1.0f;
     }
-    if (sample_rate > 1000000.0f) {
-        sample_rate = 1000000.0f;
+    if (sample_rate > MAX_SAMPLE_RATE_HZ) {
+        sample_rate = MAX_SAMPLE_RATE_HZ;
     }
     uint64_t period_us = (uint64_t)(1000000.0f / sample_rate);
-    if (period_us < 10) {
-        period_us = 10;
+    if (period_us < TIMER_MIN_PERIOD_US) {
+        period_us = TIMER_MIN_PERIOD_US;
     }
     esp_err_t err = esp_timer_stop(s_wave_timer);
     if (err != ESP_ERR_INVALID_STATE) {
@@ -164,7 +169,7 @@ static void apply_waveform(const waveform_definition_t *waveform)
 
 static void apply_frequency(float frequency_hz)
 {
-    s_frequency_hz = frequency_hz;
+    s_frequency_hz = clamp_frequency(frequency_hz);
     apply_waveform(s_current_waveform_def);
 }
 
@@ -204,11 +209,12 @@ static bool read_button_pressed(bool *last_level, uint32_t *press_ticks)
 
 static float clamp_frequency(float value)
 {
+    const float max_frequency = MAX_SAMPLE_RATE_HZ / (float)WAVEFORM_MAX_SAMPLES;
     if (value < 1.0f) {
         return 1.0f;
     }
-    if (value > 20000.0f) {
-        return 20000.0f;
+    if (value > max_frequency) {
+        return max_frequency;
     }
     return value;
 }
@@ -218,13 +224,13 @@ static float compute_frequency_step(float current)
     if (current < 100.0f) {
         return 1.0f;
     }
-    if (current < 1000.0f) {
+    if (current < 300.0f) {
+        return 5.0f;
+    }
+    if (current < 600.0f) {
         return 10.0f;
     }
-    if (current < 5000.0f) {
-        return 50.0f;
-    }
-    return 100.0f;
+    return 20.0f;
 }
 
 void app_main(void)

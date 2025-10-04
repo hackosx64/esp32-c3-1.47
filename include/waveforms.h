@@ -27,6 +27,8 @@ typedef struct {
     uint16_t max_value;
 } waveform_definition_t;
 
+#define WAVEFORM_MAX_SAMPLES 128
+
 const waveform_definition_t *waveforms_get_definition(waveform_id_t id);
 
 const waveform_definition_t *waveforms_get_all(size_t *count);
